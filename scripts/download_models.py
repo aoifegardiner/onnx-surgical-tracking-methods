@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """Download the ONNX graphs the STIR and StereoMIS evaluations open.
 
-The Hugging Face dataset also contains exports this repository does not run
+The published set also contains exports this repository does not run
 (per-scale CoTracker copies, init graphs, the single TAPNext++ graph, and an
 older RAFT file). Those are left on the server.
 
-A file the evaluation asks for that is not in the dataset is reported and
-skipped. StereoMIS RAFT and WAFT are in that group.
+A file the evaluation asks for that is not published is reported and skipped.
+StereoMIS RAFT and WAFT are in that group.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
+import urllib.request
 from pathlib import Path
 
-REPO_ID = "aoifegardiner/ONNX_Tracking_Models"
+DATASET_PAGE = "https://anonymous-hf.com/a/j3cnfgbg6pss/"
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ROOT / "models"
 
@@ -60,6 +62,46 @@ def needed_names(fp16: bool = False) -> list[str]:
     return names
 
 
+def _api_base(page: str = DATASET_PAGE) -> str:
+    """Turn https://anonymous-hf.com/a/<id>/ into the file API for that id."""
+    trimmed = page.strip().rstrip("/")
+    marker = "/a/"
+    host, found, rest = trimmed.partition(marker)
+    if not found or not rest:
+        raise ValueError("Dataset page is not an anonymous-hf link: %s" % page)
+    anon_id = rest.split("/")[0]
+    return "%s/api/a/%s" % (host, anon_id)
+
+
+def _open(url: str):
+    request = urllib.request.Request(url, headers={"User-Agent": "onnx-tracking"})
+    return urllib.request.urlopen(request)
+
+
+def published_onnx_names() -> set[str]:
+    url = _api_base() + "/tree/"
+    with _open(url) as response:
+        entries = json.load(response)
+    return {
+        item["path"]
+        for item in entries
+        if item.get("type") == "file" and str(item.get("path", "")).endswith(".onnx")
+    }
+
+
+def download_file(name: str, dest: Path) -> None:
+    url = _api_base() + "/resolve/" + name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_suffix(dest.suffix + ".partial")
+    try:
+        with _open(url) as response, partial.open("wb") as handle:
+            shutil.copyfileobj(response, handle)
+        partial.replace(dest)
+    except Exception:
+        partial.unlink(missing_ok=True)
+        raise
+
+
 def destination(name: str) -> Path:
     if name in SHARED:
         folder = SHARED[name]
@@ -101,16 +143,10 @@ def main() -> int:
             print(destination(name).relative_to(ROOT))
         return 0
 
-    try:
-        from huggingface_hub import hf_hub_download, list_repo_files
-    except ImportError:
-        print("Install huggingface_hub first: pip install -r requirements.txt", file=sys.stderr)
-        return 1
-
-    published = {name for name in list_repo_files(REPO_ID, repo_type="dataset") if name.endswith(".onnx")}
+    published = published_onnx_names()
     present = [name for name in names if name in published]
     missing = [name for name in names if name not in published]
-    print("Dataset: https://huggingface.co/datasets/%s" % REPO_ID)
+    print("Dataset: %s" % DATASET_PAGE)
     print("Needed:  %d    published: %d    not in the dataset: %d" % (len(names), len(present), len(missing)))
     for name in missing:
         print("absent %s" % name)
@@ -121,9 +157,7 @@ def main() -> int:
             print("keep   %s" % dest.relative_to(ROOT))
             continue
         print("fetch  %s" % name)
-        cached = Path(hf_hub_download(REPO_ID, filename=name, repo_type="dataset"))
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(cached, dest)
+        download_file(name, dest)
         print("       -> %s  (%.1f MB)" % (dest.relative_to(ROOT), dest.stat().st_size / 1e6))
     return 0
 

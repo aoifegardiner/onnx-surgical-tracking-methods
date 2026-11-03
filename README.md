@@ -2,7 +2,7 @@
 
 This repository evaluates published ONNX point trackers. It downloads the graphs, runs them on [STIR 2024](https://zenodo.org/records/14803158) and [StereoMIS tracking](https://doi.org/10.5281/zenodo.10867949), and writes accuracy and latency JSON.
 
-The ONNX files are not in git. They are downloaded from the Hugging Face dataset [aoifegardiner/ONNX_Tracking_Models](https://huggingface.co/datasets/aoifegardiner/ONNX_Tracking_Models).
+The ONNX files are not in git. They are downloaded from https://anonymous-hf.com/a/j3cnfgbg6pss/.
 
 ## What one run does
 
