@@ -23,7 +23,7 @@ STIR frames are 1024×1280 at 26 fps. StereoMIS left frames are 512×640 at 15 f
 
 STIR reports end-point error in pixels against the labelled end points, plus the fraction of points inside 4, 8, 16, 32, and 64 px. StereoMIS reports mean trajectory error, delta, and survival, using the same formulas as the StereoMIS point-tracking evaluation.
 
-## Why some methods have one graph per scale
+### Why some methods have one graph per scale
 
 Scale 1, 2, and 4 is the same control as in the PyTorch evaluation. The scale divides the camera resolution by that integer, the tracker runs on the smaller image, and the predicted points are mapped back to the original pixels before the error is computed. A coarser scale is faster and less accurate.
 
