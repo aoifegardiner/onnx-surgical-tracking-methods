@@ -19,9 +19,22 @@ A method is an ONNX graph plus a short host that feeds frames and reads tracks. 
 | LiteTracker | `fnet`, `corr_mlp`, and `updateformer` | Runs the online buffers around those three networks |
 | TAPNext++ | One step graph per query count | Carries the recurrent state from frame to frame |
 
-STIR frames are 1024×1280 at 26 fps. StereoMIS left frames are 512×640 at 15 fps. Scale 1, 2, or 4 divides that resolution by the same integer before the network. CoTracker, LiteTracker, and TAPNext++ ignore that scale and stay at the resolution baked into the graph (384×512, 384×512, and 256×256).
+STIR frames are 1024×1280 at 26 fps. StereoMIS left frames are 512×640 at 15 fps.
 
 STIR reports end-point error in pixels against the labelled end points, plus the fraction of points inside 4, 8, 16, 32, and 64 px. StereoMIS reports mean trajectory error, delta, and survival, using the same formulas as the StereoMIS point-tracking evaluation.
+
+## Why some methods have one graph per scale
+
+Scale 1, 2, and 4 is the same control as in the PyTorch evaluation. The scale divides the camera resolution by that integer, the tracker runs on the smaller image, and the predicted points are mapped back to the original pixels before the error is computed. A coarser scale is faster and less accurate.
+
+| Dataset | Scale 1 | Scale 2 | Scale 4 |
+| --- | --- | --- | --- |
+| STIR | 1024×1280 | 512×640 | 256×320 |
+| StereoMIS | 512×640 | 256×320 | 128×160 |
+
+RAFT, WAFT, MFT, AllTracker, PIPs++, and LocoTrack track at that downsampled size. Each ONNX graph was traced with height and width fixed, so the 1024×1280 graph cannot accept a 256×320 tensor. Each dataset and each scale is a separate file. AllTracker also needs its pair graph at that same size, and LocoTrack also needs its feature graph at that same size.
+
+CoTracker3, LiteTracker, and TAPNext++ resize every frame to the resolution they were trained at, then map the tracks back to the original pixels. Those canvases are 384×512, 384×512, and 256×256. The tensor that enters the graph does not change when `--scale` changes, so one graph covers every scale. The sweep runs those three methods at scale 1 only.
 
 ## Layout
 
@@ -55,18 +68,18 @@ pip install -r requirements.txt
 python scripts/download_models.py
 ```
 
-That fetches every `.onnx` file in the dataset (about 5.4 GB) and sorts them into `models/`. To fetch one family:
+That downloads only the graphs the evaluation opens: STIR and StereoMIS scales 1, 2, and 4 for RAFT, WAFT, MFT, AllTracker (window and pair), PIPs, and LocoTrack (tracker and feature graph), plus `cotracker_online_step.onnx` and the three LiteTracker graphs. Other files in the dataset are not downloaded. To fetch one family:
 
 ```bash
 python scripts/download_models.py --only raft_stir
 ```
 
-Files that are already in `models/` are skipped. `--force` downloads them again.
+`python scripts/download_models.py --list` prints the paths without downloading. Files already in `models/` are skipped. `--force` downloads them again. `--fp16` adds `cotracker_online_step_fp16.onnx`, which the eval uses only when passed `--fp16`.
 
-Two gaps are in the dataset, not in this script:
+The script reports two groups it will not fetch, because the evaluation needs them and the dataset does not have them:
 
-* StereoMIS RAFT and WAFT graphs are not published. Those runs exit with status 2 and the sweep marks them skipped. STIR RAFT and WAFT graphs are published.
-* TAPNext++ is published as one file, `tapnextpp_online_step.onnx`. The evaluator looks for a separate graph per query count, `models/TAPNEXTPP/tapnextpp_online_step_n<N>.onnx`. Until those files are added beside the sidecar, TAPNext++ is skipped.
+* StereoMIS RAFT and WAFT. Those runs exit with status 2 and the sweep marks them skipped. The STIR RAFT and WAFT graphs are published.
+* TAPNext++ per query count, `tapnextpp_online_step_n<N>.onnx`. The dataset has a single `tapnextpp_online_step.onnx`, which this evaluation does not load. TAPNext++ is skipped.
 
 ## Data
 
@@ -117,9 +130,7 @@ python export_onnx/run_all_onnx_stir.py \
   --outdir outputs/stir/COTRACKER/scale1
 ```
 
-Set `PYTHONPATH` to the repository root and to `litetracker/` before that command. The shell scripts do this.
-
-CoTracker, LiteTracker, and TAPNext++ only have a scale-1 graph. Passing `--scale 2` or `--scale 4` for those methods does not change the network resolution.
+Set `PYTHONPATH` to the repository root and to `litetracker/` before that command. The shell scripts do this. For CoTracker, LiteTracker, and TAPNext++, `--scale` does not select a different graph; see [Why some methods have one graph per scale](#why-some-methods-have-one-graph-per-scale).
 
 ## Outputs
 
