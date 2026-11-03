@@ -1,0 +1,39 @@
+{
+  "method": "RAFT",
+  "scale": 4,
+  "height": 256,
+  "width": 320,
+  "onnx_path": "models/RAFT/raft_scale4.onnx",
+  "input_names": [
+    "image1",
+    "image2"
+  ],
+  "output_names": [
+    "flow"
+  ],
+  "dummy_shapes": {
+    "image1": [
+      1,
+      3,
+      256,
+      320
+    ],
+    "image2": [
+      1,
+      3,
+      256,
+      320
+    ]
+  },
+  "opset": 17,
+  "iters": 20,
+  "notes": [
+    "Dense flow. Sample at query points in a Holoscan operator (or --with-points)."
+  ],
+  "extra": {
+    "height": 256,
+    "width": 320,
+    "iters": 20,
+    "with_points": false
+  }
+}

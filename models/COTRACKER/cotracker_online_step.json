@@ -1,0 +1,99 @@
+{
+  "method": "COTRACKER",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 384,
+  "width": 512,
+  "onnx_path": "models/COTRACKER/cotracker_online_step.onnx",
+  "input_names": [
+    "window",
+    "queries",
+    "previous_coords",
+    "previous_visibility",
+    "previous_confidence",
+    "previous_track_features",
+    "previous_support_features"
+  ],
+  "output_names": [
+    "tracks",
+    "new_coords",
+    "new_visibility",
+    "new_confidence",
+    "new_track_features",
+    "new_support_features"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      16,
+      3,
+      384,
+      512
+    ],
+    "queries": [
+      1,
+      4,
+      3
+    ],
+    "previous_coords": [
+      1,
+      16,
+      4,
+      2
+    ],
+    "previous_visibility": [
+      1,
+      16,
+      4
+    ],
+    "previous_confidence": [
+      1,
+      16,
+      4
+    ],
+    "previous_track_features": [
+      1,
+      4,
+      1,
+      4,
+      128
+    ],
+    "previous_support_features": [
+      1,
+      4,
+      49,
+      4,
+      128
+    ]
+  },
+  "opset": 17,
+  "iters": 4,
+  "notes": [
+    "CoTracker-3 Online step graph (scaled_online.pth). Static T=16, step=8. The point axis N is dynamic: feed however many queries the sequence has. Trace N was 4. Always 384x512 model_resolution (eval scale is not applied; native frames \u2192 this size).",
+    "Inputs: window, queries, previous_coords/visibility/confidence/track_features/support_features.",
+    "Outputs: tracks (pixels) plus new_* state. Copy new_* \u2192 previous_* on the next window.",
+    "First call: pass zeros for all previous_*. Later calls: feed back new_*.",
+    "new_coords are stride-space; new_visibility/new_confidence are pre-sigmoid logits.",
+    "Queries (t,x,y) use t as an index into the current window (STIR: t=0). Points queried after the first window are not remapped by online_ind.",
+    "Holoscan: backend onnxrt (GridSample). FormatConverterOp \u2192 384x512.",
+    "STIR-style consumption: tracks/vis/conf tails [:, -8:] (outputs_per_call).",
+    "Export rewrites 5D GridSample as 4D grid_sample + temporal lerp. The point axis stays dynamic."
+  ],
+  "extra": {
+    "height": 384,
+    "width": 512,
+    "dataset": "stir",
+    "window_len": 16,
+    "N": "dynamic",
+    "iters": 4,
+    "cotracker_mode": "online",
+    "cotracker_stage": "step",
+    "step": 8,
+    "overlap": 8,
+    "corr_levels": 4,
+    "latent_dim": 128,
+    "support": 49,
+    "with_points": false,
+    "trace_N": 4
+  }
+}

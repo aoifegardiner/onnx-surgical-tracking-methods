@@ -1,0 +1,61 @@
+{
+  "method": "COTRACKER",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 384,
+  "width": 512,
+  "onnx_path": "models/COTRACKER/cotracker_online_init.onnx",
+  "input_names": [
+    "video",
+    "queries"
+  ],
+  "output_names": [
+    "tracks",
+    "visibilities",
+    "confidence",
+    "online_ind_next",
+    "coords_overlap_out",
+    "vis_overlap_out",
+    "conf_overlap_out",
+    "track_feats_out",
+    "track_supports_out"
+  ],
+  "dummy_shapes": {
+    "video": [
+      1,
+      16,
+      3,
+      384,
+      512
+    ],
+    "queries": [
+      1,
+      64,
+      3
+    ]
+  },
+  "opset": 17,
+  "iters": 6,
+  "notes": [
+    "CoTracker-3 Online init graph. Static T=16, N=64, step=8.",
+    "First window only (online_ind=0). Matches CoTrackerOnlinePredictor after is_first_step init.",
+    "Holoscan: backend onnxrt (GridSample). FormatConverterOp \u2192 384x512; queries (t,x,y) in that frame.",
+    "Copy *_out tensors into the matching step-graph inputs (online_ind_next\u2192online_ind, coords_overlap_out\u2192coords_overlap, \u2026).",
+    "STIR-style consumption: use tracks/vis/conf tails [:, -8:] (outputs_per_call).",
+    "online_ind_next is a float32 vector of length 1 (init emits step; then 16, 24, \u2026).",
+    "Export rewrites 5D GridSample as 4D grid_sample + temporal lerp. Outputs are static-shaped."
+  ],
+  "extra": {
+    "height": 384,
+    "width": 512,
+    "dataset": "stir",
+    "window_len": 16,
+    "N": 64,
+    "iters": 6,
+    "cotracker_mode": "online",
+    "cotracker_stage": "init",
+    "step": 8,
+    "overlap": 8,
+    "with_points": false
+  }
+}

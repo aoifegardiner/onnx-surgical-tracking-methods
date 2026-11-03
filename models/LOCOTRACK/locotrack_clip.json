@@ -1,0 +1,47 @@
+{
+  "method": "LOCOTRACK",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 384,
+  "width": 512,
+  "onnx_path": "models/LOCOTRACK/locotrack_clip.onnx",
+  "input_names": [
+    "window",
+    "queries"
+  ],
+  "output_names": [
+    "tracks",
+    "occlusion"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      16,
+      3,
+      384,
+      512
+    ],
+    "queries": [
+      1,
+      64,
+      3
+    ]
+  },
+  "opset": 17,
+  "iters": null,
+  "notes": [
+    "LocoTrack-small clip T=16, N=64, 384x512 NTCHW in [0, 255]. Queries (t,x,y) with t=0 (same layout as CoTracker).",
+    "Holoscan ClipBufferOp: keep_first=True, max_len=T (frame0 + last T-1). Do not re-query last xy. Eval scale is not applied.",
+    "Holoscan backend onnxrt. Outputs are static (B,N,T,*). 5D sample \u2192 4D + time lerp."
+  ],
+  "extra": {
+    "height": 384,
+    "width": 512,
+    "dataset": "stir",
+    "T": 16,
+    "N": 64,
+    "model_size": "small",
+    "keep_first": true,
+    "with_points": false
+  }
+}

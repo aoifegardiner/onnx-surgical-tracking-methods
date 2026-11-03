@@ -1,0 +1,75 @@
+{
+  "method": "PIPS",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 384,
+  "width": 512,
+  "onnx_path": "models/PIPS/pips_online_step.onnx",
+  "input_names": [
+    "window",
+    "trajs_e0",
+    "previous_feats1",
+    "previous_feats2",
+    "previous_feats4"
+  ],
+  "output_names": [
+    "trajs",
+    "new_feats1",
+    "new_feats2",
+    "new_feats4"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      8,
+      3,
+      384,
+      512
+    ],
+    "trajs_e0": [
+      1,
+      8,
+      64,
+      2
+    ],
+    "previous_feats1": [
+      1,
+      8,
+      64,
+      128
+    ],
+    "previous_feats2": [
+      1,
+      8,
+      64,
+      128
+    ],
+    "previous_feats4": [
+      1,
+      8,
+      64,
+      128
+    ]
+  },
+  "opset": 17,
+  "iters": 16,
+  "notes": [
+    "PIPs++ online step (reference_model). Static S=8, N=64, 384x512.",
+    "Eval scale is not applied. FormatConverterOp \u2192 384x512 (same canvas as CoTracker).",
+    "First call: zeros for previous_feats*. Later: copy new_feats* \u2192 previous_feats*.",
+    "Host overlap is S-1 (advance 7 new frame(s) per call after the buffer fills).",
+    "Holoscan backend onnxrt (GridSample). InstanceNorm* \u2192 GroupNorm; static Conv1d pad."
+  ],
+  "extra": {
+    "height": 384,
+    "width": 512,
+    "dataset": "stir",
+    "iters": 16,
+    "S": 8,
+    "N": 64,
+    "step": 7,
+    "feat_dim": 128,
+    "pips_stage": "step",
+    "with_points": false
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "method": "MFT",
+  "dataset": "stir",
+  "scale": 4,
+  "height": 256,
+  "width": 320,
+  "onnx_path": "models/MFT/mft_stir_scale4.onnx",
+  "input_names": [
+    "image1",
+    "image2"
+  ],
+  "output_names": [
+    "flow",
+    "occlusion",
+    "sigma"
+  ],
+  "dummy_shapes": {
+    "image1": [
+      1,
+      3,
+      256,
+      320
+    ],
+    "image2": [
+      1,
+      3,
+      256,
+      320
+    ]
+  },
+  "opset": 17,
+  "iters": 12,
+  "notes": [
+    "Exports MFT's RAFT-OU only. Delta chaining stays a Holoscan operator."
+  ],
+  "extra": {
+    "height": 256,
+    "width": 320,
+    "dataset": "stir",
+    "iters": 12,
+    "deltas": [
+      Infinity,
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "with_points": false
+  }
+}

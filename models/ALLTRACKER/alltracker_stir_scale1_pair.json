@@ -1,0 +1,36 @@
+{
+  "method": "ALLTRACKER",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 1024,
+  "width": 1280,
+  "onnx_path": "models/ALLTRACKER/alltracker_stir_scale1_pair.onnx",
+  "input_names": [
+    "images"
+  ],
+  "output_names": [
+    "flows",
+    "visconfs"
+  ],
+  "dummy_shapes": {
+    "images": [
+      1,
+      2,
+      3,
+      1024,
+      1280
+    ]
+  },
+  "opset": 17,
+  "iters": 4,
+  "notes": [
+    "T=2 pairwise AllTracker (forward S=1). Host uses this on the first STIR/StereoMIS step."
+  ],
+  "extra": {
+    "height": 1024,
+    "width": 1280,
+    "dataset": "stir",
+    "iters": 4,
+    "T": 2
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "method": "TAPNEXTPP",
+  "scale": 1,
+  "height": 256,
+  "width": 256,
+  "input_names": [
+    "video",
+    "query_points",
+    "step",
+    "rg_lru",
+    "conv1d"
+  ],
+  "output_names": [
+    "tracks",
+    "visible_logits",
+    "new_rg_lru",
+    "new_conv1d",
+    "new_step"
+  ],
+  "extra": {
+    "model_size": 256,
+    "patch": 8,
+    "video_tokens": 1024,
+    "depth": 12,
+    "lru_width": 768,
+    "conv_cache": 3,
+    "point_counts": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      23,
+      34
+    ],
+    "files": {
+      "1": "tapnextpp_online_step_n1.onnx",
+      "2": "tapnextpp_online_step_n2.onnx",
+      "3": "tapnextpp_online_step_n3.onnx",
+      "4": "tapnextpp_online_step_n4.onnx",
+      "5": "tapnextpp_online_step_n5.onnx",
+      "6": "tapnextpp_online_step_n6.onnx",
+      "7": "tapnextpp_online_step_n7.onnx",
+      "8": "tapnextpp_online_step_n8.onnx",
+      "9": "tapnextpp_online_step_n9.onnx",
+      "10": "tapnextpp_online_step_n10.onnx",
+      "11": "tapnextpp_online_step_n11.onnx",
+      "12": "tapnextpp_online_step_n12.onnx",
+      "13": "tapnextpp_online_step_n13.onnx",
+      "14": "tapnextpp_online_step_n14.onnx",
+      "15": "tapnextpp_online_step_n15.onnx",
+      "16": "tapnextpp_online_step_n16.onnx",
+      "17": "tapnextpp_online_step_n17.onnx",
+      "18": "tapnextpp_online_step_n18.onnx",
+      "23": "tapnextpp_online_step_n23.onnx",
+      "34": "tapnextpp_online_step_n34.onnx"
+    },
+    "notes": "Online TAPNext++ step at the 256 training resolution. One static graph per query count because the attention reshape bakes 1024+Q. Camera scale 1 frames are resized outside the graph. step=0 and zero caches match PyTorch state=None."
+  }
+}

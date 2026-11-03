@@ -1,0 +1,76 @@
+{
+  "method": "PIPS",
+  "dataset": "stereomis",
+  "scale": 1,
+  "height": 512,
+  "width": 640,
+  "onnx_path": "models/PIPS/pips_stereomis_scale1.onnx",
+  "input_names": [
+    "window",
+    "trajs_e0",
+    "previous_feats1",
+    "previous_feats2",
+    "previous_feats4"
+  ],
+  "output_names": [
+    "trajs",
+    "new_feats1",
+    "new_feats2",
+    "new_feats4"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      128,
+      3,
+      512,
+      640
+    ],
+    "trajs_e0": [
+      1,
+      128,
+      64,
+      2
+    ],
+    "previous_feats1": [
+      1,
+      128,
+      64,
+      128
+    ],
+    "previous_feats2": [
+      1,
+      128,
+      64,
+      128
+    ],
+    "previous_feats4": [
+      1,
+      128,
+      64,
+      128
+    ]
+  },
+  "opset": 17,
+  "iters": 16,
+  "notes": [
+    "PIPs++ official online window (reference_model). Static S=128, N=64, 512x640.",
+    "Host: PointOdyssey test_on_fullseq (overlap S-1, feat_init, zero-vel, last-window snap-back).",
+    "First call: zeros for previous_feats*. Later: copy new_feats* \u2192 previous_feats*.",
+    "Host overlap is S-1 (advance 127 new frame(s) per completed interior window).",
+    "Short clips T<S: pad last frame to S and slice outputs. beautify=False.",
+    "Holoscan backend onnxrt (GridSample). InstanceNorm* \u2192 GroupNorm; static Conv1d pad."
+  ],
+  "extra": {
+    "height": 512,
+    "width": 640,
+    "dataset": "stereomis",
+    "iters": 16,
+    "S": 128,
+    "N": 64,
+    "step": 127,
+    "feat_dim": 128,
+    "pips_stage": "step",
+    "with_points": false
+  }
+}

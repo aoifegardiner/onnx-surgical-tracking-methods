@@ -1,0 +1,72 @@
+{
+  "method": "ALLTRACKER",
+  "dataset": "stereomis",
+  "scale": 4,
+  "height": 128,
+  "width": 160,
+  "onnx_path": "models/ALLTRACKER/alltracker_stereomis_scale4.onnx",
+  "input_names": [
+    "query",
+    "window",
+    "flows8",
+    "visconfs8"
+  ],
+  "output_names": [
+    "flows",
+    "visconfs",
+    "flows8_out",
+    "visconfs8_out"
+  ],
+  "dummy_shapes": {
+    "query": [
+      1,
+      3,
+      128,
+      160
+    ],
+    "window": [
+      1,
+      16,
+      3,
+      128,
+      160
+    ],
+    "flows8": [
+      1,
+      16,
+      2,
+      16,
+      24
+    ],
+    "visconfs8": [
+      1,
+      16,
+      2,
+      16,
+      24
+    ]
+  },
+  "opset": 17,
+  "iters": 4,
+  "notes": [
+    "AllTracker sliding window. Static S=16, stride=8, 128x160.",
+    "Host matches Net.forward_sliding: fmap_anchor=frame0, last-frame pad, carry flows8/visconfs8.",
+    "T==2 uses the pairwise *_pair.onnx graph (S=1 branch). T>=3 uses this window graph.",
+    "Sample traj_maps = flows + pixel_grid at the original query points (last real frame of the clip).",
+    "Pairwise T=2 graph: alltracker_stereomis_scale4_pair.onnx"
+  ],
+  "extra": {
+    "height": 128,
+    "width": 160,
+    "dataset": "stereomis",
+    "iters": 4,
+    "window_len": 16,
+    "S": 16,
+    "stride": 8,
+    "T": 16,
+    "h8": 16,
+    "w8": 24,
+    "with_points": false,
+    "pair_onnx": "models/ALLTRACKER/alltracker_stereomis_scale4_pair.onnx"
+  }
+}

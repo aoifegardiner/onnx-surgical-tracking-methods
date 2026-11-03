@@ -1,0 +1,82 @@
+{
+  "method": "LOCOTRACK",
+  "dataset": "stereomis",
+  "scale": 4,
+  "height": 128,
+  "width": 160,
+  "onnx_path": "models/LOCOTRACK/locotrack_stereomis_scale4.onnx",
+  "input_names": [
+    "window",
+    "queries",
+    "feat_low_0",
+    "feat_hires_0",
+    "feat_high_0"
+  ],
+  "output_names": [
+    "tracks",
+    "occlusion"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      2,
+      3,
+      128,
+      160
+    ],
+    "queries": [
+      1,
+      64,
+      3
+    ],
+    "feat_low_0": [
+      1,
+      2,
+      32,
+      32,
+      256
+    ],
+    "feat_hires_0": [
+      1,
+      2,
+      64,
+      64,
+      128
+    ],
+    "feat_high_0": [
+      1,
+      2,
+      128,
+      128,
+      64
+    ]
+  },
+  "opset": 17,
+  "iters": null,
+  "notes": [
+    "LocoTrack-small growing clip, N=64, 128x160 NTCHW in [0, 255]. Trace T=2; time axis is dynamic; host keep-first cap is 300 (same as LocoTrackSTIR). Queries (t,x,y) with t=0.",
+    "Host: re-run on frames[0:t+1] every step; if T>max_frames keep frame0 + last max-1. Do not pad with the last frame and do not re-query last xy.",
+    "Holoscan: LocoTrackHostOp + ORT (not InferenceOp) so T can grow each frame. Keep-first cap max_frames; do not pad or re-query last xy.",
+    "ResNet runs in a separate graph (locotrack_stereomis_scale4_feats.onnx) on chunks of 32 frames. The host concatenates features along time and calls this tracker on the full keep-first clip."
+  ],
+  "extra": {
+    "height": 128,
+    "width": 160,
+    "dataset": "stereomis",
+    "T": 300,
+    "trace_T": 2,
+    "max_frames": 300,
+    "N": 64,
+    "model_size": "small",
+    "keep_first": true,
+    "dynamic_time": true,
+    "with_points": false,
+    "feature_onnx": "models/LOCOTRACK/locotrack_stereomis_scale4_feats.onnx",
+    "feature_chunk": 32,
+    "feature_inputs": [
+      "feat_low_0",
+      "feat_hires_0",
+      "feat_high_0"
+    ]
+  }
+}

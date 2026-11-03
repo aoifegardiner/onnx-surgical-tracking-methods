@@ -1,0 +1,41 @@
+{
+  "method": "WAFT",
+  "dataset": "stereomis",
+  "scale": 1,
+  "height": 512,
+  "width": 640,
+  "onnx_path": "models/WAFT/waft_stereomis_scale1.onnx",
+  "input_names": [
+    "image1",
+    "image2"
+  ],
+  "output_names": [
+    "flow"
+  ],
+  "dummy_shapes": {
+    "image1": [
+      1,
+      3,
+      512,
+      640
+    ],
+    "image2": [
+      1,
+      3,
+      512,
+      640
+    ]
+  },
+  "opset": 17,
+  "iters": 5,
+  "notes": [
+    "WAFT-A1 (ViT + DepthAnything-v2). Internal pad-to-112 is baked from this H,W."
+  ],
+  "extra": {
+    "height": 512,
+    "width": 640,
+    "dataset": "stereomis",
+    "iters": 5,
+    "with_points": false
+  }
+}

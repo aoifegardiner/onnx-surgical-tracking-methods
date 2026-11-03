@@ -1,0 +1,163 @@
+{
+  "method": "LOCOTRACK",
+  "dataset": "stir",
+  "scale": 1,
+  "height": 1024,
+  "width": 1280,
+  "onnx_path": "models/LOCOTRACK/locotrack_stir_scale1.onnx",
+  "input_names": [
+    "window",
+    "queries",
+    "feat_low_0",
+    "feat_hires_0",
+    "feat_high_0",
+    "feat_low_1",
+    "feat_hires_1",
+    "feat_high_1",
+    "feat_low_2",
+    "feat_hires_2",
+    "feat_high_2",
+    "feat_low_3",
+    "feat_hires_3",
+    "feat_high_3"
+  ],
+  "output_names": [
+    "tracks",
+    "occlusion"
+  ],
+  "dummy_shapes": {
+    "window": [
+      1,
+      2,
+      3,
+      1024,
+      1280
+    ],
+    "queries": [
+      1,
+      64,
+      3
+    ],
+    "feat_low_0": [
+      1,
+      2,
+      32,
+      32,
+      256
+    ],
+    "feat_hires_0": [
+      1,
+      2,
+      64,
+      64,
+      128
+    ],
+    "feat_high_0": [
+      1,
+      2,
+      128,
+      128,
+      64
+    ],
+    "feat_low_1": [
+      1,
+      2,
+      50,
+      54,
+      256
+    ],
+    "feat_hires_1": [
+      1,
+      2,
+      100,
+      108,
+      128
+    ],
+    "feat_high_1": [
+      1,
+      2,
+      200,
+      216,
+      64
+    ],
+    "feat_low_2": [
+      1,
+      2,
+      80,
+      93,
+      256
+    ],
+    "feat_hires_2": [
+      1,
+      2,
+      160,
+      186,
+      128
+    ],
+    "feat_high_2": [
+      1,
+      2,
+      320,
+      372,
+      64
+    ],
+    "feat_low_3": [
+      1,
+      2,
+      128,
+      160,
+      256
+    ],
+    "feat_hires_3": [
+      1,
+      2,
+      256,
+      320,
+      128
+    ],
+    "feat_high_3": [
+      1,
+      2,
+      512,
+      640,
+      64
+    ]
+  },
+  "opset": 17,
+  "iters": null,
+  "notes": [
+    "LocoTrack-small growing clip, N=64, 1024x1280 NTCHW in [0, 255]. Trace T=2; time axis is dynamic; host keep-first cap is 300 (same as LocoTrackSTIR). Queries (t,x,y) with t=0.",
+    "Host: re-run on frames[0:t+1] every step; if T>max_frames keep frame0 + last max-1. Do not pad with the last frame and do not re-query last xy.",
+    "Holoscan: LocoTrackHostOp + ORT (not InferenceOp) so T can grow each frame. Keep-first cap max_frames; do not pad or re-query last xy.",
+    "ResNet runs in a separate graph (locotrack_stir_scale1_feats.onnx) on chunks of 2 frames. The host concatenates features along time and calls this tracker on the full keep-first clip."
+  ],
+  "extra": {
+    "height": 1024,
+    "width": 1280,
+    "dataset": "stir",
+    "T": 300,
+    "trace_T": 2,
+    "max_frames": 300,
+    "N": 64,
+    "model_size": "small",
+    "keep_first": true,
+    "dynamic_time": true,
+    "with_points": false,
+    "feature_onnx": "models/LOCOTRACK/locotrack_stir_scale1_feats.onnx",
+    "feature_chunk": 2,
+    "feature_inputs": [
+      "feat_low_0",
+      "feat_hires_0",
+      "feat_high_0",
+      "feat_low_1",
+      "feat_hires_1",
+      "feat_high_1",
+      "feat_low_2",
+      "feat_hires_2",
+      "feat_high_2",
+      "feat_low_3",
+      "feat_hires_3",
+      "feat_high_3"
+    ]
+  }
+}

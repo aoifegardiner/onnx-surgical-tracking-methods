@@ -1,0 +1,73 @@
+{
+  "method": "PIPS",
+  "dataset": "stir",
+  "scale": 4,
+  "height": 256,
+  "width": 320,
+  "onnx_path": "models/PIPS/pips_stir_scale4_step.onnx",
+  "input_names": [
+    "trajs_e0",
+    "rgbs",
+    "feats1",
+    "feats2",
+    "feats4"
+  ],
+  "output_names": [
+    "trajs",
+    "feats1_out",
+    "feats2_out",
+    "feats4_out"
+  ],
+  "dummy_shapes": {
+    "trajs_e0": [
+      1,
+      8,
+      64,
+      2
+    ],
+    "rgbs": [
+      1,
+      8,
+      3,
+      256,
+      320
+    ],
+    "feats1": [
+      1,
+      8,
+      64,
+      128
+    ],
+    "feats2": [
+      1,
+      8,
+      64,
+      128
+    ],
+    "feats4": [
+      1,
+      8,
+      64,
+      128
+    ]
+  },
+  "opset": 17,
+  "iters": 16,
+  "notes": [
+    "Fixed window S=8, N=64, iters=16. Host overlap is S-1 (PIPs++ test_on_pod).",
+    "step graph: feat_init is consumed; Holoscan copies feats*_out into the step graph. Pad queries to N; mask extras.",
+    "Holoscan backend onnxrt (GridSample). InstanceNorm* \u2192 GroupNorm; static Conv1d pad."
+  ],
+  "extra": {
+    "height": 256,
+    "width": 320,
+    "dataset": "stir",
+    "iters": 16,
+    "S": 8,
+    "N": 64,
+    "step": 7,
+    "pips_stage": "step",
+    "feat_dim": 128,
+    "with_points": false
+  }
+}
