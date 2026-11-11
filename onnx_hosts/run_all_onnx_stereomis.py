@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate exported StereoMIS ONNX models: TAP metrics + per-call latency.
+"""Evaluate the published StereoMIS ONNX graphs: TAP metrics + per-call latency.
 
 Writes the same JSON family as flow2d_stereomis.py under --outdir.
 """
@@ -365,7 +365,7 @@ def eval_one(method: str, scale: int, sequences, args):
     at_host = None
     reset_each = method in ("COTRACKER", "COTRACKER_ONLINE")
     if method == "LITETRACKER":
-        from export_onnx.litetracker_ort import OnnxLiteTracker
+        from onnx_hosts.litetracker_ort import OnnxLiteTracker
         import onnxruntime as ort
 
         providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]
@@ -383,7 +383,7 @@ def eval_one(method: str, scale: int, sequences, args):
         if max_step:
             backend += "+max_step:" + max_step
     elif method == "TAPNEXTPP":
-        from export_onnx.tapnextpp_ort import OnnxTapNextPP
+        from onnx_hosts.tapnextpp_ort import OnnxTapNextPP
 
         tracker = OnnxTapNextPP(ONNX_ROOT / "TAPNEXTPP")
         backend = "onnx:CUDAExecutionProvider+host:cuda"
@@ -398,7 +398,7 @@ def eval_one(method: str, scale: int, sequences, args):
         pips_host = OnnxPipsTracker(onnx_path, window=int(extra.get("S", 128)), extra=extra)
         backend = "holoscan-host:PIPS+onnx"
     elif method == "ALLTRACKER":
-        from export_onnx.alltracker_window import OnnxAllTrackerTracker
+        from onnx_hosts.alltracker_window import OnnxAllTrackerTracker
 
         extra = dict(extra)
         extra.setdefault("height", height)
@@ -406,7 +406,7 @@ def eval_one(method: str, scale: int, sequences, args):
         at_host = OnnxAllTrackerTracker(onnx_path, window_len=int(extra.get("window_len", 16)), extra=extra)
         backend = "holoscan-host:ALLTRACKER+onnx"
     elif reset_each:
-        from export_onnx.cotracker_ort import CoTrackerStepRunner, lock_jetson_clocks
+        from onnx_hosts.cotracker_ort import CoTrackerStepRunner, lock_jetson_clocks
 
         lock_jetson_clocks()
         if onnx_path is None or not Path(onnx_path).is_file():
@@ -453,7 +453,7 @@ def eval_one(method: str, scale: int, sequences, args):
         try:
             if reset_each:
                 sess = ox._release_ort_session(sess)
-                from export_onnx.cotracker_ort import CoTrackerStepRunner
+                from onnx_hosts.cotracker_ort import CoTrackerStepRunner
 
                 sess = CoTrackerStepRunner(onnx_path)
 
@@ -480,7 +480,7 @@ def eval_one(method: str, scale: int, sequences, args):
                 if reset_each and ox._is_ort_oom(exc):
                     print("%s  OOM, new ORT session and retry once" % sequence.name, flush=True)
                     sess = ox._release_ort_session(sess)
-                    from export_onnx.cotracker_ort import CoTrackerStepRunner
+                    from onnx_hosts.cotracker_ort import CoTrackerStepRunner
 
                     sess = CoTrackerStepRunner(onnx_path)
                     if use_agx:

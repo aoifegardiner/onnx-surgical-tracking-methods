@@ -215,7 +215,7 @@ class CoTrackerStepRunner:
         if self.n_points is not None and n != int(self.n_points):
             raise ValueError(
                 "CoTracker step graph has a fixed N=%d, so it cannot run %d points. "
-                "Re-export cotracker_online_step.onnx with a dynamic point axis."
+                "Rebuild cotracker_online_step.onnx with a dynamic point axis."
                 % (self.n_points, n)
             )
         self._prepare_points(n)

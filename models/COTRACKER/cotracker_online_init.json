@@ -43,7 +43,7 @@
     "Copy *_out tensors into the matching step-graph inputs (online_ind_next\u2192online_ind, coords_overlap_out\u2192coords_overlap, \u2026).",
     "STIR-style consumption: use tracks/vis/conf tails [:, -8:] (outputs_per_call).",
     "online_ind_next is a float32 vector of length 1 (init emits step; then 16, 24, \u2026).",
-    "Export rewrites 5D GridSample as 4D grid_sample + temporal lerp. Outputs are static-shaped."
+    "The graph rewrites 5D GridSample as 4D grid_sample + temporal lerp. Outputs are static-shaped."
   ],
   "extra": {
     "height": 384,

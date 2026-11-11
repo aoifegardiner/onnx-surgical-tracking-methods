@@ -30,7 +30,7 @@
   "iters": 20,
   "notes": [
     "Dense flow [B,2,H,W] in working-resolution pixels. Sample at query points in a Holoscan operator (default) or pass --with-points.",
-    "iters=20 is unrolled in the graph (STIR RAFTTracker uses 20). Re-export to change iteration count.",
+    "iters=20 is unrolled in the graph (STIR RAFTTracker uses 20). Rebuild the graph to change the iteration count.",
     "Static H\u00d7W=256\u00d7320 from stir native //4. TensorRT cannot reshape this engine for another scale."
   ],
   "extra": {

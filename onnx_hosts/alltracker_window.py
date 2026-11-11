@@ -2,7 +2,7 @@
 
 PyTorch ``AllTrackerSTIR`` calls ``Net.forward_sliding`` (window_len=16, stride=8)
 on the growing clip every STIR/StereoMIS step. ONNX cannot take a variable T, so
-this module exports one window:
+this module runs one window:
 
     query [B,3,H,W], window [B,S,3,H,W], flows8, visconfs8
         → flows [B,S,2,H,W], visconfs [B,S,2,H,W], flows8_out, visconfs8_out
@@ -25,7 +25,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from export_onnx.trace_compat import as_int
+from onnx_hosts.trace_compat import as_int
 
 
 def padded_hw(height: int, width: int) -> Tuple[int, int]:
@@ -194,7 +194,7 @@ class OnnxAllTrackerTracker:
         extra: Optional[dict] = None,
         pair_onnx: Optional[Path] = None,
     ):
-        from export_onnx.run_all_onnx_stir import _ort_session
+        from onnx_hosts.run_all_onnx_stir import _ort_session
 
         extra = extra or {}
         self.window_len = int(extra.get("window_len", extra.get("S", window_len)))

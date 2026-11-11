@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from export_onnx.cotracker_ort import CoTrackerStepRunner
+from onnx_hosts.cotracker_ort import CoTrackerStepRunner
 from holoscan_agx.operators import Operator, OperatorSpec
 
 

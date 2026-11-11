@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from export_onnx.alltracker_window import OnnxAllTrackerTracker
+from onnx_hosts.alltracker_window import OnnxAllTrackerTracker
 from holoscan_agx.operators import Operator, OperatorSpec
 
 
@@ -63,7 +63,7 @@ class AllTrackerHostOp(Operator):
         else:
             flows, dt = self.tracker.forward_sliding(self._frames)
             self.tracker.latencies_ms.append(dt)
-            from export_onnx.alltracker_window import sample_traj_xy
+            from onnx_hosts.alltracker_window import sample_traj_xy
 
             coords_work = sample_traj_xy(flows[-1], self.queries_work)
         coords_native = coords_work.copy()

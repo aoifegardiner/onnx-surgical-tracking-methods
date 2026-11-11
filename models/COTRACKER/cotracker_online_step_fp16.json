@@ -77,7 +77,7 @@
     "Queries (t,x,y) use t as an index into the current window (STIR: t=0). Points queried after the first window are not remapped by online_ind.",
     "Holoscan: backend onnxrt (GridSample). FormatConverterOp \u2192 384x512.",
     "STIR-style consumption: tracks/vis/conf tails [:, -8:] (outputs_per_call).",
-    "Export rewrites 5D GridSample as 4D grid_sample + temporal lerp. The point axis stays dynamic.",
+    "The graph rewrites 5D GridSample as 4D grid_sample + temporal lerp. The point axis stays dynamic.",
     "FP16 step graph. GridSample and LayerNormalization stay FP32. Point axis N stays dynamic."
   ],
   "extra": {

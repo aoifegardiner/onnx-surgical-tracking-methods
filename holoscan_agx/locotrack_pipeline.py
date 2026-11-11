@@ -12,7 +12,7 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from export_onnx.common import LOCOTRACK_MAX_FRAMES, keep_first_growing_clip
+from onnx_hosts.common import LOCOTRACK_MAX_FRAMES, keep_first_growing_clip
 
 PAD_N = 64
 
@@ -77,7 +77,7 @@ class OnnxLocoTrackTracker:
             self.feat_sess = _ort_session(feat_path)
             if self.feature_chunk < 1:
                 shape = self.sess.get_inputs()[0].shape
-                from export_onnx.common import locotrack_feature_chunk
+                from onnx_hosts.common import locotrack_feature_chunk
 
                 height = int(shape[3]) if isinstance(shape[3], int) else 256
                 width = int(shape[4]) if isinstance(shape[4], int) else 320
@@ -146,7 +146,7 @@ class OnnxLocoTrackTracker:
         sl = keep_first_growing_clip(self.frames, t, self.max_frames)
         feeds = self._feeds(sl)
         if self.feat_sess is not None:
-            from export_onnx.common import assemble_locotrack_feeds
+            from onnx_hosts.common import assemble_locotrack_feeds
 
             feeds = assemble_locotrack_feeds(
                 self.sess, self.feat_sess, feeds["window"], feeds["queries"], self.feature_chunk

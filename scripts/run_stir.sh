@@ -99,7 +99,7 @@ for method in $METHODS; do
     fi
     echo "[START] ${method} scale=${scale}"
     set +e
-    "$PYTHON" -u "${ROOT}/export_onnx/run_all_onnx_stir.py" \
+    "$PYTHON" -u "${ROOT}/onnx_hosts/run_all_onnx_stir.py" \
       --datadir "$DATADIR" \
       --method "$method" \
       --scale "$scale" \

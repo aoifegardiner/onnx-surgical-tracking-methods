@@ -1,6 +1,6 @@
 """Holoscan-faithful MFT: ONNX RAFT-OU + official delta chaining.
 
-The exported ``mft_*_scale*.onnx`` graph is RAFT-OU only. This module runs the
+The published ``mft_*_scale*.onnx`` graph is RAFT-OU only. This module runs the
 same ``MFT.track`` state machine as ``STIRMetricsmain.src.datatest.mft.MFTTracker``,
 substituting the PyTorch flower for ``OnnxRaftOuFlower``.
 
@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 import torch
 
-from export_onnx.mft import MFT, MFTConfig, convert_to_point_tracking
+from onnx_hosts.mft import MFT, MFTConfig, convert_to_point_tracking
 
 from holoscan_agx.onnx_flower import OnnxRaftOuFlower
 

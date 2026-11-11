@@ -11,12 +11,12 @@ A method is an ONNX graph plus a short host that feeds frames and reads tracks. 
 | Method | ONNX graph | What the host does |
 | --- | --- | --- |
 | RAFT, WAFT | One dense-flow graph per image pair | Samples the flow at the query points |
-| MFT | RAFT-OU flow graph | Runs the delta chain in `export_onnx/mft/` around that flow |
+| MFT | RAFT-OU flow graph | Runs the delta chain in `onnx_hosts/mft/` around that flow |
 | AllTracker | A 16-frame window graph, plus a 2-frame pair graph | Slides the window the same way as `forward_sliding` |
 | PIPs++ | One online step graph | Feeds the official growing window |
 | LocoTrack | A tracker graph and a feature graph | Keeps the first frame and a growing clip, capped at 300 frames |
 | CoTracker3 | One online step graph (`T=16`, step 8) | Carries the previous window state into the next call |
-| LiteTracker | `fnet`, `corr_mlp`, and `updateformer` | `export_onnx/litetracker_ort.py` runs the online buffers around those three networks |
+| LiteTracker | `fnet`, `corr_mlp`, and `updateformer` | `onnx_hosts/litetracker_ort.py` runs the online buffers around those three networks |
 | TAPNext++ | One step graph per query count | Carries the recurrent state from frame to frame |
 
 STIR frames are 1024×1280 at 26 fps. StereoMIS left frames are 512×640 at 15 fps.
@@ -39,14 +39,14 @@ CoTracker3, LiteTracker, and TAPNext++ resize every frame to the resolution they
 ## Layout
 
 ```
-export_onnx/     evaluation entry points and ONNX hosts
+onnx_hosts/      evaluation entry points and ONNX hosts
 datasets/        STIR is read in the STIR script; StereoMIS is read here
 models/          one JSON sidecar per graph, plus the downloaded .onnx files
 holoscan_agx/    optional Holoscan operators for an NVIDIA AGX
 scripts/         download and sweep helpers
 ```
 
-MFT and LiteTracker do not have their own top-level folders. The MFT delta chain is `export_onnx/mft/`. The LiteTracker host is `export_onnx/litetracker_ort.py`. Both run the published ONNX graphs. The PyTorch training code, the RAFT package, and the LiteTracker evaluation scripts are not in this repository.
+MFT and LiteTracker do not have their own top-level folders. The MFT delta chain is `onnx_hosts/mft/`. The LiteTracker host is `onnx_hosts/litetracker_ort.py`. Both run the published ONNX graphs. The PyTorch training code, the RAFT package, and the LiteTracker evaluation scripts are not in this repository.
 
 Each sidecar (`models/<METHOD>/<name>.json`) records the input names, output names, and resolution. The matching `.onnx` file is downloaded beside it.
 
@@ -122,7 +122,7 @@ bash scripts/run_stereomis.sh --gpu 0 --methods MFT
 A single method can also be launched directly:
 
 ```bash
-python export_onnx/run_all_onnx_stir.py \
+python onnx_hosts/run_all_onnx_stir.py \
   --datadir "$STIR_DATA" \
   --method COTRACKER \
   --scale 1 \
@@ -153,4 +153,4 @@ A run that cannot find its ONNX file prints `SKIP (no STIR ONNX)` or the StereoM
 
 ## AGX
 
-`holoscan_agx/` is the Holoscan path used on an NVIDIA AGX. Dense flow can go through Holoscan Inference. CoTracker, PIPs, LocoTrack, AllTracker, and MFT stay in Python hosts, because those graphs use GridSample and a variable clip length. The MFT host in that folder calls the delta chain in `export_onnx/mft/`. Holoscan itself is not installed by `requirements.txt`.
+`holoscan_agx/` is the Holoscan path used on an NVIDIA AGX. Dense flow can go through Holoscan Inference. CoTracker, PIPs, LocoTrack, AllTracker, and MFT stay in Python hosts, because those graphs use GridSample and a variable clip length. The MFT host in that folder calls the delta chain in `onnx_hosts/mft/`. Holoscan itself is not installed by `requirements.txt`.

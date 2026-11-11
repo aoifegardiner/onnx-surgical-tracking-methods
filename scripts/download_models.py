@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Download the ONNX graphs the STIR and StereoMIS evaluations open.
 
-The published set also contains exports this repository does not run
+The published set also contains graphs this repository does not run
 (per-scale CoTracker copies, init graphs, the single TAPNext++ graph, and an
 older RAFT file). Those are left on the server.
 

@@ -203,7 +203,7 @@ class OnnxLiteTracker:
     NumPy.
 
     Usage:
-        tracker = OnnxLiteTracker("./onnx_export")
+        tracker = OnnxLiteTracker("./onnx_models")
         for frame in video_frames:
             coords, vis, conf = tracker(frame_tensor, queries_tensor)
     """
@@ -227,7 +227,7 @@ class OnnxLiteTracker:
         Initialize the ONNX-based LiteTracker.
 
         Args:
-            onnx_dir (str): Directory containing the exported ONNX models.
+            onnx_dir (str): Directory containing the ONNX models.
             window_len (int): Max length of the temporal window for tracking.
             stride (int): Stride scale for feature extraction.
             corr_radius (int): Radius for correlation computation.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate exported STIR ONNX models: endpoint accuracy + per-call latency.
+"""Evaluate the published STIR ONNX graphs: endpoint accuracy + per-call latency.
 
 Writes the same JSON family as flow2d.py under --outdir (typically
 <output-root>/<METHOD>/scale<N>/). One process per method/scale so GPU memory
@@ -22,7 +22,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from export_onnx.common import LOCOTRACK_MAX_FRAMES, keep_first_growing_clip
+from onnx_hosts.common import LOCOTRACK_MAX_FRAMES, keep_first_growing_clip
 
 
 def _prepend_nvidia_libs() -> None:
@@ -336,7 +336,7 @@ class LocoTrackSessions:
         self.track = _ort_session(self.onnx_path)
 
     def run(self, _names, feeds):
-        from export_onnx.common import assemble_locotrack_feeds
+        from onnx_hosts.common import assemble_locotrack_feeds
 
         window = feeds.get("window")
         if window is None or self.feats is None:
@@ -382,7 +382,7 @@ def _open_locotrack(onnx_path: Path, extra: dict):
         shape = track.get_inputs()[0].shape
         height = int(shape[3]) if isinstance(shape[3], int) else 256
         width = int(shape[4]) if isinstance(shape[4], int) else 320
-        from export_onnx.common import locotrack_feature_chunk
+        from onnx_hosts.common import locotrack_feature_chunk
 
         chunk = locotrack_feature_chunk(height, width)
     return LocoTrackSessions(track, feats, chunk, onnx_path=onnx_path)
@@ -624,7 +624,7 @@ def _onnx_static_time(sess):
 def track_locotrack(sess, frames, pts_full, model_hw, native_hw, clip_t=LOCOTRACK_MAX_FRAMES):
     """Keep-first growing clip, same as LocoTrackSTIR (cap clip_t, default 300).
 
-    Pads with the last frame only when the ONNX graph has a static T (old exports).
+    Pads with the last frame only when the ONNX graph has a static T (older graphs).
     Dynamic-T graphs get the true prefix length each step.
     """
     n_real = int(pts_full.shape[0])
@@ -869,7 +869,7 @@ def eval_one(method: str, scale: int, seqs, args):
     at_host = None
     reset_each = method in ("COTRACKER", "COTRACKER_ONLINE")
     if method == "LITETRACKER":
-        from export_onnx.litetracker_ort import OnnxLiteTracker
+        from onnx_hosts.litetracker_ort import OnnxLiteTracker
 
         import onnxruntime as ort
 
@@ -885,7 +885,7 @@ def eval_one(method: str, scale: int, seqs, args):
         if max_step:
             backend += "+max_step:" + max_step
     elif method == "TAPNEXTPP":
-        from export_onnx.tapnextpp_ort import OnnxTapNextPP
+        from onnx_hosts.tapnextpp_ort import OnnxTapNextPP
 
         tracker = OnnxTapNextPP(ONNX_ROOT / "TAPNEXTPP")
         backend = "onnx:CUDAExecutionProvider+host:cuda"
@@ -900,7 +900,7 @@ def eval_one(method: str, scale: int, seqs, args):
         pips_host = OnnxPipsTracker(onnx_path, window=int(extra.get("S", 128)), extra=extra)
         backend = "holoscan-host:PIPS+onnx"
     elif method == "ALLTRACKER":
-        from export_onnx.alltracker_window import OnnxAllTrackerTracker
+        from onnx_hosts.alltracker_window import OnnxAllTrackerTracker
 
         extra = dict(extra)
         extra.setdefault("height", height)
@@ -908,7 +908,7 @@ def eval_one(method: str, scale: int, seqs, args):
         at_host = OnnxAllTrackerTracker(onnx_path, window_len=int(extra.get("window_len", 16)), extra=extra)
         backend = "holoscan-host:ALLTRACKER+onnx"
     elif reset_each:
-        from export_onnx.cotracker_ort import CoTrackerStepRunner, lock_jetson_clocks
+        from onnx_hosts.cotracker_ort import CoTrackerStepRunner, lock_jetson_clocks
 
         lock_jetson_clocks()
         if onnx_path is None or not Path(onnx_path).is_file():
@@ -971,7 +971,7 @@ def eval_one(method: str, scale: int, seqs, args):
         try:
             if reset_each:
                 sess = _release_ort_session(sess)
-                from export_onnx.cotracker_ort import CoTrackerStepRunner
+                from onnx_hosts.cotracker_ort import CoTrackerStepRunner
 
                 sess = CoTrackerStepRunner(onnx_path)
 
@@ -999,7 +999,7 @@ def eval_one(method: str, scale: int, seqs, args):
                 if reset_each and _is_ort_oom(exc):
                     print("%s  OOM, new ORT session and retry once" % rel, flush=True)
                     sess = _release_ort_session(sess)
-                    from export_onnx.cotracker_ort import CoTrackerStepRunner
+                    from onnx_hosts.cotracker_ort import CoTrackerStepRunner
 
                     sess = CoTrackerStepRunner(onnx_path)
                     if use_agx:

@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from export_onnx.pips_official_online import S_MAX_DEFAULT, run_official_online
-from export_onnx.run_all_onnx_stir import PAD_N, _ort_run_dict, _ort_session, _pad_xy
+from onnx_hosts.pips_official_online import S_MAX_DEFAULT, run_official_online
+from onnx_hosts.run_all_onnx_stir import PAD_N, _ort_run_dict, _ort_session, _pad_xy
 
 
 def _pad_time(arr: np.ndarray, s_max: int, axis: int = 1) -> np.ndarray:

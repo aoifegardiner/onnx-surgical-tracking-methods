@@ -1,6 +1,6 @@
 """ONNX RAFT-OU flower with the same ``compute_flow`` contract as MFT.RAFTWrapper.
 
-MFT's exported graph is only the optical-flow network. Delta selection, flow
+MFT's published graph is only the optical-flow network. Delta selection, flow
 chaining, and occlusion/sigma propagation stay on the host (Holoscan operator
 or this flower + ``MFT.track``).
 """
@@ -12,7 +12,7 @@ from typing import Optional
 import numpy as np
 import torch
 
-from export_onnx.run_all_onnx_stir import _ort_session, _squeeze_flow
+from onnx_hosts.run_all_onnx_stir import _ort_session, _squeeze_flow
 
 
 def _bgr_uint8_to_nchw_rgb(img: np.ndarray) -> np.ndarray:

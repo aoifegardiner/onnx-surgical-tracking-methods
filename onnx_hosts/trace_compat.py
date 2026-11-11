@@ -1,4 +1,4 @@
-"""ONNX/TorchScript tracing helpers shared by export wrappers.
+"""ONNX tracing helpers used by the hosts.
 
 The legacy tracer cannot lower: Python round() on tensor shapes, adaptive
 interpolate with a tensor size, 5D GridSample, or InstanceNorm with unknown C.
@@ -282,7 +282,7 @@ def patch_alltracker_for_onnx(model: nn.Module) -> None:
     _orig_get_fmaps = at.Net.get_fmaps
 
     def get_fmaps(self, images_, B, T, sw, is_training):
-        # Skip the eval-time .cuda() / chunk path; export tensors are already on device.
+        # Skip the eval-time .cuda() / chunk path; the tensors are already on device.
         return _orig_get_fmaps(self, images_, B, T, sw, True)
 
     def corr(fmap1, fmap2, num_head):

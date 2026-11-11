@@ -31,7 +31,7 @@
   "opset": 17,
   "iters": 12,
   "notes": [
-    "Exports MFT's RAFT-OU only. Delta chaining stays a Holoscan operator."
+    "The graph is MFT's RAFT-OU only. Delta chaining stays a Holoscan operator."
   ],
   "extra": {
     "height": 128,

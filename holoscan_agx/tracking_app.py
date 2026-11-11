@@ -39,7 +39,7 @@ _WORKSPACE = Path(__file__).resolve().parents[1]
 if str(_WORKSPACE) not in sys.path:
     sys.path.insert(0, str(_WORKSPACE))
 
-from export_onnx.common import DATASETS, model_hw, native_hw, resolve_dataset
+from onnx_hosts.common import DATASETS, model_hw, native_hw, resolve_dataset
 
 
 def _load_queries(path: Path | None, n: int = 4) -> "np.ndarray":

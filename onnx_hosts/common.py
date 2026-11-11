@@ -1,4 +1,4 @@
-"""Shared helpers for PyTorch -> ONNX export of STIR 2D trackers."""
+"""Shared helpers for the STIR and StereoMIS ONNX hosts."""
 
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ class FlowThenSample(nn.Module):
 
 
 @dataclass
-class ExportSpec:
+class GraphSpec:
     method: str
     dataset: str
     scale: int
@@ -220,7 +220,7 @@ def keep_first_growing_clip(frames: Sequence, t: int, max_frames: int = LOCOTRAC
     return sl
 
 
-def export_onnx(
+def trace_onnx(
     model: nn.Module,
     dummy_inputs: Tuple[torch.Tensor, ...],
     output_path: Path,
@@ -228,7 +228,7 @@ def export_onnx(
     output_names: Sequence[str],
     opset: int = 17,
     dynamic_axes: Optional[Dict[str, Dict[int, str]]] = None,
-    exporter: str = "legacy",
+    tracer: str = "legacy",
     do_constant_folding: bool = True,
     warmup: bool = True,
     freeze_output_shapes: bool = True,
@@ -245,25 +245,25 @@ def export_onnx(
         if dummy_inputs and dummy_inputs[0].is_cuda:
             torch.cuda.empty_cache()
 
-    export_kwargs = dict(
+    trace_kwargs = dict(
         input_names=list(input_names),
         output_names=list(output_names),
         opset_version=opset,
         do_constant_folding=do_constant_folding,
-        dynamo=exporter == "dynamo",
+        dynamo=tracer == "dynamo",
     )
     if dynamic_axes:
-        export_kwargs["dynamic_axes"] = dynamic_axes
+        trace_kwargs["dynamic_axes"] = dynamic_axes
 
     try:
-        torch.onnx.export(model, dummy_inputs, str(output_path), **export_kwargs)
+        torch.onnx.export(model, dummy_inputs, str(output_path), **trace_kwargs)
     except TypeError:
-        export_kwargs.pop("dynamo", None)
-        torch.onnx.export(model, dummy_inputs, str(output_path), **export_kwargs)
+        trace_kwargs.pop("dynamo", None)
+        torch.onnx.export(model, dummy_inputs, str(output_path), **trace_kwargs)
     except Exception:
-        if exporter == "dynamo":
-            export_kwargs["dynamo"] = False
-            torch.onnx.export(model, dummy_inputs, str(output_path), **export_kwargs)
+        if tracer == "dynamo":
+            trace_kwargs["dynamo"] = False
+            torch.onnx.export(model, dummy_inputs, str(output_path), **trace_kwargs)
         else:
             raise
 
