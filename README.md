@@ -154,7 +154,3 @@ A run that cannot find its ONNX file prints `SKIP (no STIR ONNX)` or the StereoM
 ## AGX
 
 `holoscan_agx/` is the Holoscan path used on an NVIDIA AGX. Dense flow can go through Holoscan Inference. CoTracker, PIPs, LocoTrack, AllTracker, and MFT stay in Python hosts, because those graphs use GridSample and a variable clip length. The MFT host in that folder calls the delta chain in `export_onnx/mft/`. Holoscan itself is not installed by `requirements.txt`.
-
-## Third-party code
-
-`export_onnx/mft/` is the MFT delta chain used around the RAFT-OU graph, adapted from MFT under the license in `export_onnx/mft/LICENSE` (CC BY-NC-SA 4.0). `export_onnx/litetracker_ort.py` is the LiteTracker host around `fnet`, `corr_mlp`, and `updateformer`, adapted from LiteTracker under `export_onnx/litetracker_LICENSE.md` (CC BY-NC 4.0). The ONNX graphs replace the original network weights; the PyTorch checkpoints those projects ship are not included.
