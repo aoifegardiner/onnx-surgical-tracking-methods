@@ -11,12 +11,12 @@ A method is an ONNX graph plus a short host that feeds frames and reads tracks. 
 | Method | ONNX graph | What the host does |
 | --- | --- | --- |
 | RAFT, WAFT | One dense-flow graph per image pair | Samples the flow at the query points |
-| MFT | RAFT-OU flow graph | Runs the MFT delta chain around that flow |
+| MFT | RAFT-OU flow graph | Runs the delta chain in `export_onnx/mft/` around that flow |
 | AllTracker | A 16-frame window graph, plus a 2-frame pair graph | Slides the window the same way as `forward_sliding` |
 | PIPs++ | One online step graph | Feeds the official growing window |
 | LocoTrack | A tracker graph and a feature graph | Keeps the first frame and a growing clip, capped at 300 frames |
 | CoTracker3 | One online step graph (`T=16`, step 8) | Carries the previous window state into the next call |
-| LiteTracker | `fnet`, `corr_mlp`, and `updateformer` | Runs the online buffers around those three networks |
+| LiteTracker | `fnet`, `corr_mlp`, and `updateformer` | `export_onnx/litetracker_ort.py` runs the online buffers around those three networks |
 | TAPNext++ | One step graph per query count | Carries the recurrent state from frame to frame |
 
 STIR frames are 1024×1280 at 26 fps. StereoMIS left frames are 512×640 at 15 fps.
@@ -42,11 +42,11 @@ CoTracker3, LiteTracker, and TAPNext++ resize every frame to the resolution they
 export_onnx/     evaluation entry points and ONNX hosts
 datasets/        STIR is read in the STIR script; StereoMIS is read here
 models/          one JSON sidecar per graph, plus the downloaded .onnx files
-MFT_original/    MFT delta chain used around the MFT ONNX flow graph
-litetracker/     LiteTracker host used around its three ONNX networks
 holoscan_agx/    optional Holoscan operators for an NVIDIA AGX
 scripts/         download and sweep helpers
 ```
+
+MFT and LiteTracker do not have their own top-level folders. The MFT delta chain is `export_onnx/mft/`. The LiteTracker host is `export_onnx/litetracker_ort.py`. Both run the published ONNX graphs. The PyTorch training code, the RAFT package, and the LiteTracker evaluation scripts are not in this repository.
 
 Each sidecar (`models/<METHOD>/<name>.json`) records the input names, output names, and resolution. The matching `.onnx` file is downloaded beside it.
 
@@ -130,7 +130,7 @@ python export_onnx/run_all_onnx_stir.py \
   --outdir outputs/stir/COTRACKER/scale1
 ```
 
-Set `PYTHONPATH` to the repository root and to `litetracker/` before that command. The shell scripts do this. For CoTracker, LiteTracker, and TAPNext++, `--scale` does not select a different graph; see [Why some methods have one graph per scale](#why-some-methods-have-one-graph-per-scale).
+Set `PYTHONPATH` to the repository root before that command. The shell scripts do this. For CoTracker, LiteTracker, and TAPNext++, `--scale` does not select a different graph; see [Why some methods have one graph per scale](#why-some-methods-have-one-graph-per-scale).
 
 ## Outputs
 
@@ -153,8 +153,8 @@ A run that cannot find its ONNX file prints `SKIP (no STIR ONNX)` or the StereoM
 
 ## AGX
 
-`holoscan_agx/` is the Holoscan path used on an NVIDIA AGX. Dense flow can go through Holoscan Inference. CoTracker, PIPs, LocoTrack, AllTracker, and MFT stay in the Python hosts in that folder, because those graphs use GridSample and a variable clip length. Holoscan itself is not installed by `requirements.txt`.
+`holoscan_agx/` is the Holoscan path used on an NVIDIA AGX. Dense flow can go through Holoscan Inference. CoTracker, PIPs, LocoTrack, AllTracker, and MFT stay in Python hosts, because those graphs use GridSample and a variable clip length. The MFT host in that folder calls the delta chain in `export_onnx/mft/`. Holoscan itself is not installed by `requirements.txt`.
 
 ## Third-party code
 
-`MFT_original/` is the MFT tracker used to chain flow, under the license in `MFT_original/LICENSE`. `litetracker/` is the LiteTracker host, under `litetracker/LICENSE.md`. The ONNX graphs replace the original network weights; the PyTorch checkpoints those projects ship are not included.
+`export_onnx/mft/` is the MFT delta chain used around the RAFT-OU graph, adapted from MFT under the license in `export_onnx/mft/LICENSE` (CC BY-NC-SA 4.0). `export_onnx/litetracker_ort.py` is the LiteTracker host around `fnet`, `corr_mlp`, and `updateformer`, adapted from LiteTracker under `export_onnx/litetracker_LICENSE.md` (CC BY-NC 4.0). The ONNX graphs replace the original network weights; the PyTorch checkpoints those projects ship are not included.

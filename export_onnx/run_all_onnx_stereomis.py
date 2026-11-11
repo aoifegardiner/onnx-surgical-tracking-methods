@@ -365,8 +365,7 @@ def eval_one(method: str, scale: int, sequences, args):
     at_host = None
     reset_each = method in ("COTRACKER", "COTRACKER_ONLINE")
     if method == "LITETRACKER":
-        sys.path.insert(0, str(ox.ROOT / "litetracker"))
-        from onnx_example import OnnxLiteTracker
+        from export_onnx.litetracker_ort import OnnxLiteTracker
         import onnxruntime as ort
 
         providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]

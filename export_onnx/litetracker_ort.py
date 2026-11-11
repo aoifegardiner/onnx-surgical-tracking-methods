@@ -1,187 +1,196 @@
+"""ONNX LiteTracker host.
+
+The published graphs are ``fnet``, ``corr_mlp``, and ``updateformer``.
+This module keeps the online buffers, correlation sampling, and positional
+encoding that those graphs do not contain.
+
+Adapted from LiteTracker (Karaoglu et al., MICCAI 2025), CC BY-NC 4.0.
+See litetracker_LICENSE.md in this directory.
 """
-Example for exporting LiteTracker sub-components to ONNX format and using with a wrapper.
-Please note that there might be discrepancies between the PyTorch and ONNX wrapper. Please verify carefully for your use case.
+from __future__ import annotations
 
-Usage:
-    # Export only:
-    uv run onnx_example.py --checkpoint path/to/weights.pth --output_dir ./onnx_export
-
-    # Export + verify against PyTorch:
-    uv run onnx_example.py --checkpoint path/to/weights.pth --output_dir ./onnx_export --verify
-"""
-
+import math
 import os
-import argparse
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from src.lite_tracker import LiteTracker, posenc
-from src.model_utils import sample_features5d, bilinear_sampler
 
-
-def load_model(checkpoint_path: str) -> LiteTracker:
+def posenc(x, min_deg: int, max_deg: int):
     """
-    Load a LiteTracker model from a checkpoint file.
+    Concatenate input tensor `x` with its positional encoding using scales 2^[min_deg, max_deg-1].
+
+    This function computes a positional encoding for `x` by applying sinusoidal functions at multiple frequencies.
+    Instead of separately computing [sin(x), cos(x)], it uses the trig identity cos(x) = sin(x + pi/2)
+    to perform a single vectorized call to sin([x, x + pi/2]).
 
     Args:
-        checkpoint_path (str): Path to the checkpoint file (.pth).
+        x (torch.Tensor): Input tensor to be encoded. Should be in the range [-pi, pi].
+        min_deg (int): Minimum (inclusive) degree of the encoding.
+        max_deg (int): Maximum (exclusive) degree of the encoding.
 
     Returns:
-        LiteTracker: The loaded model in evaluation mode.
+        torch.Tensor: Concatenation of the input and its positional encoding.
     """
-    model = LiteTracker()
-    with open(checkpoint_path, "rb") as f:
-        state_dict = torch.load(f, map_location="cpu")
-        if "model" in state_dict:
-            state_dict = state_dict["model"]
-    model.load_state_dict(state_dict)
-    model.eval()
-    return model
-
-
-# ---------------------------------------------------------------------------
-# Export functions
-# ---------------------------------------------------------------------------
-
-def export_fnet(model: LiteTracker, output_dir: str, opset_version: int = 17):
-    """
-    Export the feature encoder (BasicEncoder) to ONNX.
-
-    Creates a dummy input matching the model's expected resolution and exports
-    the feature extraction CNN with dynamic batch size support.
-
-    Args:
-        model (LiteTracker): The source LiteTracker model.
-        output_dir (str): Directory to save the exported ONNX file.
-        opset_version (int): ONNX opset version to use. Defaults to 17.
-
-    Returns:
-        str: Path to the exported ONNX file.
-    """
-    output_path = os.path.join(output_dir, "fnet.onnx")
-    H, W = model.model_resolution
-    dummy_input = torch.randn(1, 3, H, W)
-
-    torch.onnx.export(
-        model.fnet,
-        dummy_input,
-        output_path,
-        opset_version=opset_version,
-        input_names=["frame"],
-        output_names=["features"],
-        dynamic_axes={
-            "frame": {0: "batch"},
-            "features": {0: "batch"},
-        },
+    if min_deg == max_deg:
+        return x
+    scales = torch.tensor(
+        [2**i for i in range(min_deg, max_deg)], dtype=x.dtype, device=x.device
     )
-    print(f"  Exported fnet -> {output_path}")
-    return output_path
+
+    xb = (x[..., None, :] * scales[:, None]).reshape(list(x.shape[:-1]) + [-1])
+    four_feat = torch.sin(torch.cat([xb, xb + 0.5 * math.pi], dim=-1))
+    return torch.cat([x] + [four_feat], dim=-1)
 
 
-def export_corr_mlp(model: LiteTracker, output_dir: str, opset_version: int = 17):
+def get_1d_sincos_pos_embed_from_grid(
+    embed_dim: int, pos: torch.Tensor
+) -> torch.Tensor:
     """
-    Export the correlation MLP to ONNX.
+    Generate a 1D sine-cosine positional embedding from a grid of positions.
 
-    The MLP takes a flattened correlation volume (r^2 * r^2 values, where r = 2*corr_radius+1)
-    and produces a compressed correlation embedding.
+    This function computes a 1D positional embedding using sine and cosine functions,
+    given an embedding dimension and a tensor of positions.
 
     Args:
-        model (LiteTracker): The source LiteTracker model.
-        output_dir (str): Directory to save the exported ONNX file.
-        opset_version (int): ONNX opset version to use. Defaults to 17.
+        embed_dim (int): The embedding dimension (must be even).
+        pos (torch.Tensor): Positions to generate the embedding from, shape (M,) or compatible.
 
     Returns:
-        str: Path to the exported ONNX file.
+        torch.Tensor: The generated 1D positional embedding of shape (1, M, embed_dim).
     """
-    output_path = os.path.join(output_dir, "corr_mlp.onnx")
-    r = 2 * model.corr_radius + 1
-    input_size = r * r * r * r  # 49 * 49 = 2401
-    dummy_input = torch.randn(1, input_size)
+    assert embed_dim % 2 == 0
+    omega = torch.arange(embed_dim // 2, dtype=torch.double)
+    omega /= embed_dim / 2.0
+    omega = 1.0 / 10000**omega  # (D/2,)
 
-    torch.onnx.export(
-        model.corr_mlp,
-        dummy_input,
-        output_path,
-        opset_version=opset_version,
-        input_names=["corr_volume"],
-        output_names=["corr_emb"],
-        dynamic_axes={
-            "corr_volume": {0: "num_points"},
-            "corr_emb": {0: "num_points"},
-        },
+    pos = pos.reshape(-1)  # (M,)
+    out = torch.einsum("m,d->md", pos, omega)  # (M, D/2), outer product
+
+    emb_sin = torch.sin(out)  # (M, D/2)
+    emb_cos = torch.cos(out)  # (M, D/2)
+
+    emb = torch.cat([emb_sin, emb_cos], dim=1)  # (M, D)
+    return emb[None].float()
+
+
+def bilinear_sampler(
+    input, coords, align_corners: bool = True, padding_mode: str = "border"
+):
+    """
+    Sample a tensor using bilinear interpolation
+
+    `bilinear_sampler(input, coords)` samples a tensor :attr:`input` at
+    coordinates :attr:`coords` using bilinear interpolation. It is the same
+    as `torch.nn.functional.grid_sample()` but with a different coordinate
+    convention.
+
+    The input tensor is assumed to be of shape :math:`(B, C, H, W)`, where
+    :math:`B` is the batch size, :math:`C` is the number of channels,
+    :math:`H` is the height of the image, and :math:`W` is the width of the
+    image. The tensor :attr:`coords` of shape :math:`(B, H_o, W_o, 2)` is
+    interpreted as an array of 2D point coordinates :math:`(x_i,y_i)`.
+
+    Alternatively, the input tensor can be of size :math:`(B, C, T, H, W)`,
+    in which case sample points are triplets :math:`(t_i,x_i,y_i)`. Note
+    that in this case the order of the components is slightly different
+    from `grid_sample()`, which would expect :math:`(x_i,y_i,t_i)`.
+
+    If `align_corners` is `True`, the coordinate :math:`x` is assumed to be
+    in the range :math:`[0,W-1]`, with 0 corresponding to the center of the
+    left-most image pixel :math:`W-1` to the center of the right-most
+    pixel.
+
+    If `align_corners` is `False`, the coordinate :math:`x` is assumed to
+    be in the range :math:`[0,W]`, with 0 corresponding to the left edge of
+    the left-most pixel :math:`W` to the right edge of the right-most
+    pixel.
+
+    Similar conventions apply to the :math:`y` for the range
+    :math:`[0,H-1]` and :math:`[0,H]` and to :math:`t` for the range
+    :math:`[0,T-1]` and :math:`[0,T]`.
+
+    Args:
+        input (torch.Tensor): batch of input images.
+        coords (torch.Tensor): batch of coordinates.
+        align_corners (bool, optional): Coordinate convention. Defaults to `True`.
+        padding_mode (str, optional): Padding mode. Defaults to `"border"`.
+
+    Returns:
+        torch.Tensor: sampled points.
+    """
+
+    sizes = input.shape[2:]
+
+    assert len(sizes) in [2, 3]
+
+    if len(sizes) == 3:
+        # t x y -> x y t to match dimensions T H W in grid_sample
+        coords = coords[:, :, :, :, [1, 2, 0]]
+
+    if align_corners:
+        scales = []
+        for i in range(len(sizes)):
+            size = sizes[len(sizes) - 1 - i]
+
+            scales.append(torch.tensor(2.0 / max(size - 1, 1), device=coords.device))
+
+        scale_tensor = torch.stack(scales)
+
+        coords = coords * scale_tensor
+
+    else:
+        scales = []
+        for i in range(len(sizes)):
+            size = sizes[len(sizes) - 1 - i]
+
+            scales.append(torch.tensor(2.0 / size, device=coords.device))
+
+        scale_tensor = torch.stack(scales)
+
+        coords = coords * scale_tensor
+
+    coords -= 1
+
+    return F.grid_sample(
+        input, coords, align_corners=align_corners, padding_mode=padding_mode
     )
-    print(f"  Exported corr_mlp -> {output_path}")
-    return output_path
 
 
-def export_updateformer(model: LiteTracker, output_dir: str, opset_version: int = 17):
+def sample_features5d(input, coords):
     """
-    Export the EfficientUpdateFormer transformer to ONNX.
+    Sample spatio-temporal features from a 5D input tensor at given coordinates.
 
-    The transformer takes per-point, per-frame tokens and an attention mask, and
-    outputs coordinate/visibility/confidence deltas.
+    This function samples features from a 5D tensor `input` of shape (B, T, C, H, W)
+    at the specified spatio-temporal coordinates `coords` of shape (B, R1, R2, 3),
+    where each coordinate is (t, x, y). The output is a tensor of sampled features
+    with shape (B, R1, R2, C).
 
     Args:
-        model (LiteTracker): The source LiteTracker model.
-        output_dir (str): Directory to save the exported ONNX file.
-        opset_version (int): ONNX opset version to use. Defaults to 17.
+        input (torch.Tensor): Spatio-temporal feature tensor of shape (B, T, C, H, W).
+        coords (torch.Tensor): Spatio-temporal coordinates of shape (B, R1, R2, 3),
+            where each coordinate is (t, x, y).
 
     Returns:
-        str: Path to the exported ONNX file.
+        torch.Tensor: Sampled features of shape (B, R1, R2, C).
     """
-    output_path = os.path.join(output_dir, "updateformer.onnx")
 
-    B, N, T = 1, 100, 4
-    dummy_input = torch.randn(B, N, T, model.input_dim)
-    dummy_mask = torch.ones(B, T, N, dtype=torch.bool)
+    B, T, _, _, _ = input.shape
 
-    torch.onnx.export(
-        model.updateformer,
-        (dummy_input, dummy_mask),
-        output_path,
-        opset_version=opset_version,
-        input_names=["input_tensor", "mask"],
-        output_names=["delta"],
-        dynamic_axes={
-            "input_tensor": {0: "batch", 1: "num_points", 2: "window_size"},
-            "mask": {0: "batch", 1: "window_size", 2: "num_points"},
-            "delta": {0: "batch", 1: "num_points", 2: "window_size"},
-        },
-    )
-    print(f"  Exported updateformer -> {output_path}")
-    return output_path
+    # B T C H W -> B C T H W
+    input = input.permute(0, 2, 1, 3, 4)
 
+    # B R1 R2 3 -> B R1 R2 1 3
+    coords = coords.unsqueeze(3)
 
-def export_all(model: LiteTracker, output_dir: str, opset_version: int = 17):
-    """
-    Export all LiteTracker sub-components to ONNX.
+    # B C R1 R2 1
+    feats = bilinear_sampler(input, coords)
 
-    Exports fnet, corr_mlp, and updateformer as separate ONNX files into the
-    specified output directory.
+    return feats.permute(0, 2, 3, 1, 4).view(
+        B, feats.shape[2], feats.shape[3], feats.shape[1]
+    )  # B C R1 R2 1 -> B R1 R2 C
 
-    Args:
-        model (LiteTracker): The source LiteTracker model.
-        output_dir (str): Directory to save the exported ONNX files.
-        opset_version (int): ONNX opset version to use. Defaults to 17.
-
-    Returns:
-        dict: Mapping from component name to output file path.
-    """
-    os.makedirs(output_dir, exist_ok=True)
-    print("Exporting LiteTracker sub-components to ONNX...")
-    paths = {
-        "fnet": export_fnet(model, output_dir, opset_version),
-        "corr_mlp": export_corr_mlp(model, output_dir, opset_version),
-        "updateformer": export_updateformer(model, output_dir, opset_version),
-    }
-    print("Export complete!")
-    return paths
-
-
-# ---------------------------------------------------------------------------
-# ONNX-based LiteTracker wrapper
-# ---------------------------------------------------------------------------
 
 class OnnxLiteTracker:
     """
@@ -272,7 +281,6 @@ class OnnxLiteTracker:
         )
 
         # Precompute time embedding (same as LiteTracker.__init__)
-        from src.model_utils import get_1d_sincos_pos_embed_from_grid
         time_grid = torch.linspace(0, window_len - 1, window_len).reshape(1, window_len, 1)
         self.time_emb = get_1d_sincos_pos_embed_from_grid(input_dim, time_grid[0]).to(self.device)
 
@@ -847,135 +855,3 @@ class OnnxLiteTracker:
         vis = vis[..., 0]
         conf = conf[..., 0]
         return coords, vis, conf
-
-
-# ---------------------------------------------------------------------------
-# Verification
-# ---------------------------------------------------------------------------
-
-def verify_export(checkpoint_path: str, onnx_dir: str, num_frames: int = 5):
-    """
-    Verify ONNX export by comparing outputs against PyTorch model.
-
-    Runs both models on identical synthetic inputs and checks numerical agreement.
-    Uses a tolerance of 1e-2 for coordinate and confidence comparisons to account
-    for floating-point differences between PyTorch and ONNX Runtime backends.
-
-    Args:
-        checkpoint_path (str): Path to the LiteTracker checkpoint (.pth).
-        onnx_dir (str): Directory containing the exported ONNX models.
-        num_frames (int): Number of synthetic frames to test. Defaults to 5.
-
-    Returns:
-        bool: True if all frames pass verification, False otherwise.
-    """
-    print("\nVerifying ONNX export against PyTorch...")
-
-    # Load PyTorch model
-    pt_model = load_model(checkpoint_path)
-    pt_model.eval()
-
-    # Create ONNX tracker
-    onnx_tracker = OnnxLiteTracker(onnx_dir, providers=["CPUExecutionProvider"])
-
-    # Create synthetic inputs
-    B, C, H, W = 1, 3, 480, 640
-    N = 10
-    torch.manual_seed(42)
-    frames = [
-        torch.randint(0, 255, (B, C, H, W), dtype=torch.float32)
-        for _ in range(num_frames)
-    ]
-    queries = torch.cat(
-        [
-            torch.zeros(B, N, 1),  # all queries start at frame 0
-            torch.rand(B, N, 1) * (W - 1),
-            torch.rand(B, N, 1) * (H - 1),
-        ],
-        dim=2,
-    )
-
-    # Run both models
-    pt_model.reset()
-    onnx_tracker.reset()
-
-    max_coord_diff = 0.0
-    max_conf_diff = 0.0
-    all_passed = True
-
-    for i, frame in enumerate(frames):
-        with torch.no_grad():
-            pt_coords, pt_vis, pt_conf = pt_model(frame, queries)
-
-        onnx_coords, onnx_vis, onnx_conf = onnx_tracker(frame, queries)
-
-        coord_diff = (pt_coords.float() - onnx_coords.float()).abs().max().item()
-        conf_diff = (pt_conf.float() - onnx_conf.float()).abs().max().item()
-        vis_match = (pt_vis == onnx_vis).all().item()
-
-        max_coord_diff = max(max_coord_diff, coord_diff)
-        max_conf_diff = max(max_conf_diff, conf_diff)
-
-        # Use a reasonable tolerance for float32 comparisons
-        coord_ok = coord_diff < 1e-2
-        conf_ok = conf_diff < 1e-2
-
-        status = "PASS" if (coord_ok and conf_ok) else "FAIL"
-        if status == "FAIL":
-            all_passed = False
-        print(
-            f"  Frame {i}: {status} | "
-            f"coord_diff={coord_diff:.6f}, conf_diff={conf_diff:.6f}, vis_match={vis_match}"
-        )
-
-    print(f"\n  Max coord diff: {max_coord_diff:.6f}")
-    print(f"  Max conf diff:  {max_conf_diff:.6f}")
-
-    if all_passed:
-        print("\n  ✓ All frames passed verification!")
-    else:
-        print(
-            "\n  ✗ Some frames exceeded tolerance. This may be due to floating-point "
-            "differences between PyTorch and ONNX Runtime. Consider increasing tolerance "
-            "or ensuring consistent dtypes."
-        )
-
-    return all_passed
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Export LiteTracker sub-components to ONNX format."
-    )
-    parser.add_argument(
-        "-w", "--checkpoint",
-        required=True,
-        help="Path to LiteTracker checkpoint (.pth)",
-    )
-    parser.add_argument(
-        "-o", "--output_dir",
-        default="./onnx_export",
-        help="Output directory for ONNX models (default: ./onnx_export)",
-    )
-    parser.add_argument(
-        "--opset",
-        type=int,
-        default=17,
-        help="ONNX opset version (default: 17)",
-    )
-    parser.add_argument(
-        "--verify",
-        action="store_true",
-        help="Run verification after export (compares PyTorch vs ONNX outputs)",
-    )
-    args = parser.parse_args()
-
-    model = load_model(args.checkpoint)
-    export_all(model, args.output_dir, opset_version=args.opset)
-
-    if args.verify:
-        verify_export(args.checkpoint, args.output_dir)

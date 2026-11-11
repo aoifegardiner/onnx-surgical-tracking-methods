@@ -1,11 +1,17 @@
-# -*- origami-fold-style: triple-braces; coding: utf-8; -*-
+"""MFT delta chain around an optical-flow flower.
+
+Adapted from MFT (Neoral, Serych, Matas, WACV 2024), CC BY-NC-SA 4.0.
+See LICENSE in this directory. The PyTorch RAFT flower is not included.
+``OnnxMFTTracker`` supplies an ONNX RAFT-OU flower with the same
+``compute_flow`` contract.
+"""
 import einops
 import numpy as np
 import torch
 from types import SimpleNamespace
 import logging
-from MFT_original.MFT.results import FlowOUTrackingResult
-from MFT_original.MFT.utils.timing import general_time_measurer
+from .results import FlowOUTrackingResult
+from .timing import general_time_measurer
 
 logger = logging.getLogger(__name__)
 

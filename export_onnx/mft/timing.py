@@ -1,3 +1,8 @@
+"""Timing helper used by the MFT delta chain.
+
+Adapted from MFT (Neoral, Serych, Matas, WACV 2024), CC BY-NC-SA 4.0.
+See LICENSE in this directory.
+"""
 from timeit import default_timer as timer
 import torch
 import logging

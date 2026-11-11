@@ -18,13 +18,9 @@ import cv2
 import numpy as np
 import torch
 
-from MFT_original.MFT.config import load_config
-from MFT_original.MFT.MFT import MFT
-from MFT_original.MFT.point_tracking import convert_to_point_tracking
+from export_onnx.mft import MFT, MFTConfig, convert_to_point_tracking
 
 from holoscan_agx.onnx_flower import OnnxRaftOuFlower
-
-MFT_CFG = str(Path(__file__).resolve().parents[1] / "MFT_original" / "configs" / "MFT_cfg.py")
 
 
 def _nchw_rgb_to_bgr_uint8(frame: np.ndarray) -> np.ndarray:
@@ -40,8 +36,7 @@ class OnnxMFTTracker:
     """Online MFT over an ONNX RAFT-OU engine."""
 
     def __init__(self, onnx_path: Path, occlusion_threshold: float = 0.02):
-        config = load_config(MFT_CFG)
-        config.occlusion_threshold = float(occlusion_threshold)
+        config = MFTConfig(occlusion_threshold=occlusion_threshold)
         # Do not construct the PyTorch RAFT flower; ONNX replaces it.
         self.tracker = MFT.__new__(MFT)
         self.tracker.C = config

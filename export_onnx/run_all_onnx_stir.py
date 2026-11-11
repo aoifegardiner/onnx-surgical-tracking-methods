@@ -869,8 +869,7 @@ def eval_one(method: str, scale: int, seqs, args):
     at_host = None
     reset_each = method in ("COTRACKER", "COTRACKER_ONLINE")
     if method == "LITETRACKER":
-        sys.path.insert(0, str(ROOT / "litetracker"))
-        from onnx_example import OnnxLiteTracker
+        from export_onnx.litetracker_ort import OnnxLiteTracker
 
         import onnxruntime as ort
 

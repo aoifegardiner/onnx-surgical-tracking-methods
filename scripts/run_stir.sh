@@ -59,7 +59,7 @@ fi
 
 mkdir -p "${OUTPUT_ROOT}/logs"
 cd "$ROOT"
-export PYTHONPATH="${ROOT}:${ROOT}/litetracker${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 export PYTHONUNBUFFERED=1
 export CUDA_VISIBLE_DEVICES="$GPU"
 
